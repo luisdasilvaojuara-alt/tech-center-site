@@ -11,6 +11,8 @@
     
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
     <header id="header">
@@ -25,6 +27,7 @@
                     <li><a href="#services" class="nav-link">Serviços</a></li>
                     <li><a href="#about" class="nav-link">Sobre</a></li>
                     <li><a href="#portfolio" class="nav-link">Portfólio</a></li>
+                    <li><a href="#qrcode-generator" class="nav-link">Gerador Wi-Fi</a></li>
                     <li><a href="#contact" class="nav-link">Contato</a></li>
                 </ul>
                 <div class="hamburger" id="hamburger">
@@ -227,6 +230,66 @@
         </div>
     </section>
 
+    <section id="qrcode-generator" class="services" style="background-color: #f8fafc; border-top: 1px solid #e2e8f0;">
+        <div class="container">
+            <div class="section-header">
+                <h2>Ferramenta Wi-Fi</h2>
+                <p>Gere QR Codes profissionais em alta definição para sua empresa ou clientes</p>
+            </div>
+            
+            <div style="display: flex; flex-wrap: wrap; gap: 30px; justify-content: center; align-items: flex-start; margin-top: 30px;">
+                <div style="background: #fff; padding: 25px; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); flex: 1; min-width: 280px; max-width: 450px;">
+                    <div style="margin-bottom: 15px;">
+                        <label style="display:block; margin-bottom: 5px; font-weight: 600; color: #334155;">REDE / SSID:</label>
+                        <input type="text" id="wifi-ssid" placeholder="Nome da rede Wi-Fi" style="width:100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box;">
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        <label style="display:block; margin-bottom: 5px; font-weight: 600; color: #334155;">SENHA:</label>
+                        <input type="password" id="wifi-password" placeholder="Senha da rede" style="width:100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box;">
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        <label style="display:block; margin-bottom: 5px; font-weight: 600; color: #334155;">Protocolo de Segurança:</label>
+                        <select id="wifi-encryption" style="width:100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box; background: #fff;">
+                            <option value="WPA">WPA / WPA2</option>
+                            <option value="nopass">Nenhum (Rede Aberta)</option>
+                        </select>
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        <label style="display:block; margin-bottom: 5px; font-weight: 600; color: #334155;">Inserir Logo (PNG Transparente):</label>
+                        <input type="file" id="wifi-logo" accept="image/*" style="width:100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box;">
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        <div style="display:flex; justify-content:space-between; font-weight:600; font-size:14px; color: #334155;">
+                            <label>Tamanho da Logo:</label>
+                            <span id="wifi-size-val">120px</span>
+                        </div>
+                        <input type="range" id="wifi-size-range" min="60" max="180" value="120" step="4" oninput="ajustarParametrosWiFi()" style="width: 100%;">
+                    </div>
+                    <div style="margin-bottom: 20px;">
+                        <div style="display:flex; justify-content:space-between; font-weight:600; font-size:14px; color: #334155;">
+                            <label>Espessura do Contorno:</label>
+                            <span id="wifi-border-val">8px</span>
+                        </div>
+                        <input type="range" id="wifi-border-range" min="0" max="24" value="8" step="2" oninput="ajustarParametrosWiFi()" style="width: 100%;">
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="gerarWiFiHD()" style="width:100%; margin-bottom: 10px;">Gerar QR Code</button>
+                    <button class="btn btn-secondary" id="wifi-download" onclick="baixarWiFiHD()" style="width:100%; display:none; background-color: #28a745; color: white; border: none;">Baixar Imagem HD</button>
+                </div>
+
+                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 320px;">
+                    <div style="background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border: 1px solid #e2e8f0;">
+                        <canvas id="wifi-canvas" width="600" height="600" style="display:none; max-width: 100%; width: 280px; height: 280px; background: #fff;"></canvas>
+                        <div id="wifi-placeholder" style="width: 280px; height: 280px; display: flex; align-items: center; justify-content: center; background: #f1f5f9; color: #64748b; font-size: 14px; border: 2px dashed #cbd5e1; border-radius: 6px; text-align: center; padding: 20px; box-sizing: border-box;">
+                            Preencha os dados e clique em "Gerar" para visualizar o código
+                        </div>
+                    </div>
+                    <div id="wifi-raw-library" style="display:none;"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <section id="contact" class="contact">
         <div class="container">
             <div class="section-header">
@@ -345,5 +408,126 @@
     </a>
 
     <script src="script.js"></script>
+    <script>
+        let wifiLogoImagem = null;
+
+        function ajustarParametrosWiFi() {
+            const bVal = document.getElementById('wifi-border-range').value;
+            document.getElementById('wifi-border-val').innerText = bVal + 'px';
+
+            const sVal = document.getElementById('wifi-size-range').value;
+            document.getElementById('wifi-size-val').innerText = sVal + 'px';
+            
+            if(document.getElementById('wifi-ssid').value.trim() !== "") {
+                gerarWiFiHD();
+            }
+        }
+
+        document.getElementById('wifi-logo').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    wifiLogoImagem = new Image();
+                    wifiLogoImagem.onload = function() {
+                        gerarWiFiHD();
+                    };
+                    wifiLogoImagem.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
+            } else {
+                wifiLogoImagem = null;
+            }
+        });
+
+        function gerarWiFiHD() {
+            const ssid = document.getElementById('wifi-ssid').value.trim();
+            const password = document.getElementById('wifi-password').value;
+            const encryption = document.getElementById('wifi-encryption').value;
+            const canvas = document.getElementById('wifi-canvas');
+            const placeholder = document.getElementById('wifi-placeholder');
+            const rawDiv = document.getElementById('wifi-raw-library');
+            
+            const thickness = parseInt(document.getElementById('wifi-border-range').value);
+            const logoSize = parseInt(document.getElementById('wifi-size-range').value);
+
+            if (!ssid) {
+                alert('Por favor, digite o nome da REDE (SSID).');
+                return;
+            }
+
+            placeholder.style.display = 'none';
+            canvas.style.display = 'block';
+            rawDiv.innerHTML = "";
+            
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+
+            let qrTexto = `WIFI:S:${ssid};T:${encryption};P:${password};;`;
+            if (encryption === 'nopass') {
+                qrTexto = `WIFI:S:${ssid};T:nopass;;;`;
+            }
+
+            const qrcode = new QRCode(rawDiv, {
+                text: qrTexto,
+                width: 600,
+                height: 600,
+                colorDark: "#000000",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.H 
+            });
+
+            setTimeout(() => {
+                const qrImg = rawDiv.querySelector('img');
+                if (qrImg) {
+                    ctx.drawImage(qrImg, 0, 0, 600, 600);
+                    document.getElementById('wifi-download').style.display = 'block';
+
+                    if (wifiLogoImagem) {
+                        const x = (canvas.width - logoSize) / 2;
+                        const y = (canvas.height - logoSize) / 2;
+
+                        if (thickness > 0) {
+                            const buffer = document.createElement('canvas');
+                            buffer.width = logoSize;
+                            buffer.height = logoSize;
+                            const bCtx = buffer.getContext('2d');
+                            
+                            bCtx.imageSmoothingEnabled = true;
+                            bCtx.imageSmoothingQuality = 'high';
+                            
+                            bCtx.drawImage(wifiLogoImagem, 0, 0, logoSize, logoSize);
+                            bCtx.globalCompositeOperation = 'source-in';
+                            bCtx.fillStyle = '#ffffff';
+                            bCtx.fillRect(0, 0, logoSize, logoSize);
+
+                            const totalPassos = 32; 
+                            for (let i = 0; i < totalPassos; i++) {
+                                const angulo = (i / totalPassos) * Math.PI * 2;
+                                const dx = Math.cos(angulo) * thickness;
+                                const dy = Math.sin(angulo) * thickness;
+                                ctx.drawImage(buffer, x + dx, y + dy);
+                            }
+                        }
+                        ctx.drawImage(wifiLogoImagem, x, y, logoSize, logoSize);
+                    }
+                }
+            }, 100);
+        }
+
+        function baixarWiFiHD() {
+            const canvas = document.getElementById('wifi-canvas');
+            const ssid = document.getElementById('wifi-ssid').value.trim() || "wifi";
+            const imagemUrl = canvas.toDataURL("image/png");
+            
+            const link = document.createElement('a');
+            link.download = `qrcode-${ssid}-hd.png`;
+            link.href = imagemUrl;
+            link.click();
+        }
+    </script>
 </body>
 </html>
